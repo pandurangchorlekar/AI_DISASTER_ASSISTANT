@@ -5,9 +5,9 @@ import "leaflet/dist/leaflet.css";
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [centers, setCenters] = useState([]);
+  const [reliefCenters, setReliefCenters] = useState([]);
 
-  // Replace with your deployed backend URL when on Render
+  // Your deployed backend URL
   const backendURL = "https://ai-disaster-assistant-2.onrender.com";
 
   const sendMessage = async () => {
@@ -25,21 +25,23 @@ function App() {
 
       const data = await response.json();
 
-      // Split multiline weather messages for display
-      const botMessage = data.message.split("\n").map((line, idx) => <div key={idx}>{line}</div>);
+      // Show bot reply
+      const botMessage = data.message
+        ? data.message.split("\n").map((line, idx) => <div key={idx}>{line}</div>)
+        : "⚠️ No response";
 
       setMessages([...newMessages, { sender: "bot", text: botMessage }]);
 
-      // Set relief centers if present
-      if (data.centers) {
-        setCenters(data.centers);
+      // ✅ Match backend key: relief_centers
+      if (data.relief_centers && data.relief_centers.length > 0) {
+        setReliefCenters(data.relief_centers);
       } else {
-        setCenters([]);
+        setReliefCenters([]);
       }
 
     } catch (error) {
       setMessages([...newMessages, { sender: "bot", text: "⚠️ Server error." }]);
-      setCenters([]);
+      setReliefCenters([]);
     }
 
     setInput("");
@@ -65,16 +67,16 @@ function App() {
       </div>
 
       {/* Map Section */}
-      {centers.length > 0 && (
+      {reliefCenters.length > 0 && (
         <div style={{ height: "300px", marginTop: "10px" }}>
           <MapContainer
-            center={[centers[0].lat, centers[0].lon]}
+            center={[reliefCenters[0].lat, reliefCenters[0].lng]}   {/* ✅ use lat + lng */}
             zoom={13}
             style={{ height: "100%", width: "100%" }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {centers.map((center, idx) => (
-              <Marker key={idx} position={[center.lat, center.lon]}>
+            {reliefCenters.map((center, idx) => (
+              <Marker key={idx} position={[center.lat, center.lng]}>
                 <Popup>{center.name}</Popup>
               </Marker>
             ))}
