@@ -1,95 +1,101 @@
 import React, { useState } from "react";
 import "./App.css";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Marker Icon Fix
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 function App() {
-  const [messages, setMessages] = useState([
-    { sender: "bot", text: "Hello 👋 I’m your Disaster Relief Assistant." }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [centers, setCenters] = useState([]);
 
-  const reliefCenters = {
-    mangalore: [12.9141, 74.8560],
-    mumbai: [19.0760, 72.8777],
-    delhi: [28.7041, 77.1025],
-  };
+  const backendURL = "https://ai-disaster-assistant-2.onrender.com/chat"; // ✅ Your backend
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessage = { sender: "user", text: input };
+    setMessages([...messages, newMessage]);
 
     try {
-      const res = await fetch("https://your-backend.onrender.com/chat", {
+      const res = await fetch(backendURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
       const data = await res.json();
 
-      const botMessage = { sender: "bot", text: data.message };
-      setMessages((prev) => [...prev, botMessage]);
+      // Add bot message
+      setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
+
+      // If relief centers included, show map pins
+      if (data.centers) {
+        setCenters(data.centers);
+      } else {
+        setCenters([]);
+      }
     } catch (error) {
-      const botMessage = { sender: "bot", text: "⚠️ Server not responding." };
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "⚠️ Server error, please try again later." },
+      ]);
     }
 
     setInput("");
   };
 
   return (
-    <div className="container mt-4">
-      <h2 className="text-center mb-4">🌍 AI Disaster Relief Assistant</h2>
-
-      {/* Chat UI */}
-      <div className="card p-3 mb-4" style={{ height: "400px", overflowY: "auto" }}>
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`d-flex mb-2 ${msg.sender === "user" ? "justify-content-end" : "justify-content-start"}`}
-          >
-            <div
-              className={`p-2 rounded ${msg.sender === "user" ? "bg-primary text-white" : "bg-light"}`}
-              style={{ maxWidth: "75%" }}
-            >
+    <div className="app">
+      <div className="chat-window">
+        <div className="chat-header">🌐 Disaster Relief Assistant</div>
+        <div className="chat-body">
+          {messages.map((msg, i) => (
+            <div key={i} className={`chat-bubble ${msg.sender}`}>
               {msg.text}
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Input Box */}
-      <div className="d-flex">
-        <input
-          className="form-control"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-        />
-        <button className="btn btn-success ms-2" onClick={sendMessage}>
-          Send
-        </button>
-      </div>
-
-      {/* Map */}
-      <div className="mt-4">
-        <h4>🗺️ Relief Centers</h4>
-        <MapContainer center={[12.9141, 74.8560]} zoom={5} style={{ height: "300px", width: "100%" }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="© OpenStreetMap contributors"
-          />
-          {Object.entries(reliefCenters).map(([city, coords], idx) => (
-            <Marker key={idx} position={coords}>
-              <Popup>{city.charAt(0).toUpperCase() + city.slice(1)} Relief Center</Popup>
-            </Marker>
           ))}
-        </MapContainer>
+        </div>
+        <div className="chat-footer">
+          <input
+            type="text"
+            placeholder="Ask about weather or relief centers..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          />
+          <button onClick={sendMessage}>Send</button>
+        </div>
       </div>
+
+      {centers.length > 0 && (
+        <div className="map-container">
+          <MapContainer
+            center={[centers[0].lat, centers[0].lon]}
+            zoom={12}
+            style={{ height: "300px", width: "100%" }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {centers.map((c, idx) => (
+              <Marker key={idx} position={[c.lat, c.lon]}>
+                <Popup>{c.name}</Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      )}
     </div>
   );
 }
