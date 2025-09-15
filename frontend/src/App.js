@@ -1,73 +1,41 @@
 import React, { useState } from "react";
-import "./App.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-
-// Marker Icon Fix
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [centers, setCenters] = useState([]);
 
+  // Change to your Render backend URL when deployed
   const backendURL = "https://ai-disaster-assistant-2.onrender.com";
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const newMessage = { sender: "user", text: input };
-    setMessages([...messages, newMessage]);
+    const newMessages = [...messages, { sender: "user", text: input }];
+    setMessages(newMessages);
 
     try {
-      let endpoint = "/chat";
-      let method = "POST";
-      let body = JSON.stringify({ message: input });
-
-      // Weather detection
-      const weatherMatch = input.trim().match(/^weather\s*(in\s*)?(.+)$/i);
-      let city = "";
-      if (weatherMatch) {
-        city = weatherMatch[2].trim();
-        endpoint = `/weather?city=${encodeURIComponent(city)}`;
-        method = "GET";
-        body = null;
-      }
-
-      const res = await fetch(`${backendURL}${endpoint}`, {
-        method,
+      const response = await fetch(`${backendURL}/chat`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body,
+        body: JSON.stringify({ message: input }),
       });
 
-      if (!res.ok) throw new Error("Network response was not ok");
+      const data = await response.json();
 
-      const data = await res.json();
+      setMessages([...newMessages, { sender: "bot", text: data.message }]);
 
-      // Add bot message
-      setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
-
-      // Update map safely
-      if (data.centers && Array.isArray(data.centers) && data.centers.length > 0 && data.centers[0].lat && data.centers[0].lon) {
+      // If centers present → store them for map
+      if (data.centers) {
         setCenters(data.centers);
       } else {
-        setCenters([]);
+        setCenters([]); // clear old pins
       }
+
     } catch (error) {
-      console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { sender: "bot", text: "⚠️ Server error, please try again later." },
-      ]);
+      setMessages([...newMessages, { sender: "bot", text: "⚠️ Server error." }]);
       setCenters([]);
     }
 
@@ -75,48 +43,65 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <div className="chat-window">
-        <div className="chat-header">🌐 Disaster Relief Assistant</div>
-        <div className="chat-body">
-          {messages.map((msg, i) => (
-            <div key={i} className={`chat-bubble ${msg.sender}`}>
-              {msg.text}
-            </div>
-          ))}
-        </div>
-        <div className="chat-footer">
-          <input
-            type="text"
-            placeholder="Ask about weather or relief centers..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
+    <div style={styles.container}>
+      <h2 style={styles.header}>💬 AI Disaster Relief Assistant</h2>
+      <div style={styles.chatBox}>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.message,
+              alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
+              backgroundColor: msg.sender === "user" ? "#DCF8C6" : "#FFF",
+            }}
+          >
+            {msg.text}
+          </div>
+        ))}
       </div>
 
-      {Array.isArray(centers) && centers.length > 0 && centers[0].lat && centers[0].lon && (
-        <div className="map-container">
+      {/* Map Section */}
+      {centers.length > 0 && (
+        <div style={{ height: "300px", marginTop: "10px" }}>
           <MapContainer
             center={[centers[0].lat, centers[0].lon]}
-            zoom={12}
-            style={{ height: "300px", width: "100%" }}
+            zoom={13}
+            style={{ height: "100%", width: "100%" }}
           >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {centers.map((c, idx) =>
-              c.lat && c.lon ? (
-                <Marker key={idx} position={[c.lat, c.lon]}>
-                  <Popup>{c.name}</Popup>
-                </Marker>
-              ) : null
-            )}
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {centers.map((center, idx) => (
+              <Marker key={idx} position={[center.lat, center.lon]}>
+                <Popup>{center.name}</Popup>
+              </Marker>
+            ))}
           </MapContainer>
         </div>
       )}
+
+      <div style={styles.inputBox}>
+        <input
+          style={styles.input}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        />
+        <button style={styles.button} onClick={sendMessage}>Send</button>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  container: { width: "400px", margin: "20px auto", fontFamily: "Arial, sans-serif" },
+  header: { textAlign: "center", marginBottom: "10px" },
+  chatBox: { border: "1px solid #ccc", padding: "10px", height: "300px", overflowY: "auto", display: "flex", flexDirection: "column" },
+  message: { margin: "5px", padding: "10px", borderRadius: "10px", maxWidth: "70%" },
+  inputBox: { display: "flex", marginTop: "10px" },
+  input: { flex: 1, padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
+  button: { padding: "10px 15px", marginLeft: "5px", background: "#25D366", color: "white", border: "none", borderRadius: "5px" },
+};
 
 export default App;
