@@ -7,7 +7,7 @@ function App() {
   const [input, setInput] = useState("");
   const [centers, setCenters] = useState([]);
 
-  // Change to your Render backend URL when deployed
+  // Replace with your deployed backend URL when on Render
   const backendURL = "https://ai-disaster-assistant-2.onrender.com";
 
   const sendMessage = async () => {
@@ -25,13 +25,16 @@ function App() {
 
       const data = await response.json();
 
-      setMessages([...newMessages, { sender: "bot", text: data.message }]);
+      // Split multiline weather messages for display
+      const botMessage = data.message.split("\n").map((line, idx) => <div key={idx}>{line}</div>);
 
-      // If centers present → store them for map
+      setMessages([...newMessages, { sender: "bot", text: botMessage }]);
+
+      // Set relief centers if present
       if (data.centers) {
         setCenters(data.centers);
       } else {
-        setCenters([]); // clear old pins
+        setCenters([]);
       }
 
     } catch (error) {
@@ -45,6 +48,7 @@ function App() {
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>💬 AI Disaster Relief Assistant</h2>
+      
       <div style={styles.chatBox}>
         {messages.map((msg, i) => (
           <div
@@ -68,9 +72,7 @@ function App() {
             zoom={13}
             style={{ height: "100%", width: "100%" }}
           >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {centers.map((center, idx) => (
               <Marker key={idx} position={[center.lat, center.lon]}>
                 <Popup>{center.name}</Popup>

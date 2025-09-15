@@ -6,10 +6,9 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# --- API Key for Weather ---
 WEATHER_API_KEY = "cb5eab1352b276cc73182ea4758e8904"
 
-# --- Relief Centers with coordinates ---
+# Relief centers (demo)
 relief_centers = {
     "mangalore": [
         {"name": "Town Hall Shelter", "lat": 12.8703, "lon": 74.8806},
@@ -25,45 +24,60 @@ relief_centers = {
     ]
 }
 
+# Major cities list for default weather display
+major_cities = ["mumbai", "delhi", "bangalore", "chennai", "kolkata", "hyderabad", "pune", "ahmedabad", "jaipur", "mangalore"]
+
 @app.route("/")
 def home():
     return jsonify({"message": "AI Disaster Relief Assistant Backend is running ✅"})
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message", "").lower()
+    user_message = request.json.get("message", "").lower().strip()
 
     # 1️⃣ Weather
     if "weather" in user_message:
-        weather_cities = []
+        words = user_message.split()
+        # Try to detect city mentioned after 'weather' or 'in'
+        city = None
+        if "in" in words:
+            city_index = words.index("in") + 1
+            if city_index < len(words):
+                city = words[city_index]
+        elif len(words) > 1:
+            city = words[1]
 
-        # Check if a city is mentioned
-        for city in relief_centers.keys():
-            if city in user_message:
-                weather_cities = [city]
-                break
+        weather_messages = []
 
-        # If no city mentioned, show weather for all cities
-        if not weather_cities:
-            weather_cities = list(relief_centers.keys())
-
-        messages = []
-        for city in weather_cities:
+        # If city mentioned → fetch weather for that city
+        if city:
             try:
                 url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
                 res = requests.get(url).json()
-
                 if res.get("cod") != 200:
-                    messages.append(f"⚠️ Could not fetch weather for {city.title()}.")
-                    continue
-
-                temp = res["main"]["temp"]
-                desc = res["weather"][0]["description"]
-                messages.append(f"🌦️ {city.title()}: {temp}°C, {desc}")
+                    weather_messages.append(f"⚠️ Could not fetch weather for {city.title()}.")
+                else:
+                    temp = res["main"]["temp"]
+                    desc = res["weather"][0]["description"]
+                    weather_messages.append(f"🌦️ {city.title()}: {temp}°C, {desc}")
             except Exception as e:
-                messages.append(f"⚠️ Weather fetch failed for {city.title()}. {str(e)}")
+                weather_messages.append(f"⚠️ Weather fetch failed for {city.title()}: {str(e)}")
+        else:
+            # No city → fetch for all major cities
+            for c in major_cities:
+                try:
+                    url = f"http://api.openweathermap.org/data/2.5/weather?q={c}&appid={WEATHER_API_KEY}&units=metric"
+                    res = requests.get(url).json()
+                    if res.get("cod") != 200:
+                        weather_messages.append(f"⚠️ Could not fetch weather for {c.title()}.")
+                    else:
+                        temp = res["main"]["temp"]
+                        desc = res["weather"][0]["description"]
+                        weather_messages.append(f"🌦️ {c.title()}: {temp}°C, {desc}")
+                except Exception as e:
+                    weather_messages.append(f"⚠️ Weather fetch failed for {c.title()}: {str(e)}")
 
-        return jsonify({"message": "\n".join(messages), "centers": []})
+        return jsonify({"message": "\n".join(weather_messages), "centers": []})
 
     # 2️⃣ Relief Centers
     elif "relief" in user_message or "shelter" in user_message:
