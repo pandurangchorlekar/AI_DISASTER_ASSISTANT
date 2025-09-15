@@ -20,7 +20,7 @@ function App() {
   const [input, setInput] = useState("");
   const [centers, setCenters] = useState([]);
 
-  const backendURL = "https://ai-disaster-assistant-2.onrender.com"; // Base backend URL
+  const backendURL = "https://ai-disaster-assistant-2.onrender.com";
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -29,25 +29,24 @@ function App() {
     setMessages([...messages, newMessage]);
 
     try {
-      // Determine endpoint
       let endpoint = "/chat";
       let method = "POST";
       let body = JSON.stringify({ message: input });
 
-      // If input starts with "weather", use weather endpoint
-      const weatherMatch = input.trim().match(/^weather (.+)$/i);
+      // Weather detection (handles "weather <city>" or "weather in <city>")
+      const weatherMatch = input.trim().match(/^weather\s*(in\s*)?(.+)$/i);
+      let city = "";
       if (weatherMatch) {
-        const city = weatherMatch[1];
+        city = weatherMatch[2].trim();
         endpoint = `/weather?city=${encodeURIComponent(city)}`;
         method = "GET";
         body = null;
       }
 
-      // Fetch data from backend
       const res = await fetch(`${backendURL}${endpoint}`, {
-        method: method,
+        method,
         headers: { "Content-Type": "application/json" },
-        body: body,
+        body,
       });
 
       if (!res.ok) throw new Error("Network response was not ok");
@@ -57,8 +56,8 @@ function App() {
       // Add bot message
       setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
 
-      // Update map if centers included
-      if (data.centers) {
+      // Update map safely
+      if (data.centers && Array.isArray(data.centers) && data.centers.length > 0) {
         setCenters(data.centers);
       } else {
         setCenters([]);
