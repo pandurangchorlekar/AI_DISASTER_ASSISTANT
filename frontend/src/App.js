@@ -7,7 +7,7 @@ function App() {
   const [input, setInput] = useState("");
   const [reliefCenters, setReliefCenters] = useState([]);
 
-  const backendURL = "https://ai-disaster-assistant-2.onrender.com"; // 🔗 Update with your backend Render URL
+  const backendURL = "https://ai-disaster-assistant-2.onrender.com"; // ✅ your Render backend
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -26,8 +26,8 @@ function App() {
 
       setMessages([...newMessages, { sender: "bot", text: data.message }]);
 
-      // ✅ Relief centers match backend key
-      if (data.relief_centers) {
+      // ✅ Prevents blank page when reliefCenters not found
+      if (data.relief_centers && Array.isArray(data.relief_centers)) {
         setReliefCenters(data.relief_centers);
       } else {
         setReliefCenters([]);
@@ -39,6 +39,9 @@ function App() {
 
     setInput("");
   };
+
+  // ✅ Default map position (India)
+  const defaultPosition = [20.5937, 78.9629];
 
   return (
     <div style={styles.container}>
@@ -66,17 +69,18 @@ function App() {
           center={
             reliefCenters.length > 0
               ? [reliefCenters[0].lat, reliefCenters[0].lng]
-              : [20.5937, 78.9629] // 🌏 Default: India
+              : defaultPosition
           }
           zoom={reliefCenters.length > 0 ? 13 : 5}
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {reliefCenters.map((center, idx) => (
-            <Marker key={idx} position={[center.lat, center.lng]}>
-              <Popup>{center.name}</Popup>
-            </Marker>
-          ))}
+          {reliefCenters.length > 0 &&
+            reliefCenters.map((center, idx) => (
+              <Marker key={idx} position={[center.lat, center.lng]}>
+                <Popup>{center.name}</Popup>
+              </Marker>
+            ))}
         </MapContainer>
       </div>
 

@@ -30,9 +30,9 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message", "").lower()
+    user_message = request.json.get("message", "").lower().strip()
 
-    # 🌦 Weather for ANY city
+    # 1️⃣ Weather Query
     if "weather" in user_message:
         try:
             city = None
@@ -57,7 +57,7 @@ def chat():
         except Exception as e:
             return jsonify({"message": f"⚠️ Weather fetch failed. {str(e)}"})
 
-    # 🏠 Relief Centers
+    # 2️⃣ Relief Center Query
     elif "relief" in user_message or "shelter" in user_message:
         for city, centers in relief_centers.items():
             if city in user_message:
@@ -67,9 +67,9 @@ def chat():
                 })
         return jsonify({"message": "⚠️ No relief center data available for that city yet."})
 
-    # 🤖 Default
-    return jsonify({"message": f"🤖 You said: {user_message}"})
-
+    # 3️⃣ Default Fallback (chat echo)
+    else:
+        return jsonify({"message": f"🤖 You said: {user_message}"})
 
 if __name__ == "__main__":
     app.run(debug=True)
