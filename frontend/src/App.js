@@ -33,7 +33,7 @@ function App() {
       let method = "POST";
       let body = JSON.stringify({ message: input });
 
-      // Weather detection (handles "weather <city>" or "weather in <city>")
+      // Weather detection
       const weatherMatch = input.trim().match(/^weather\s*(in\s*)?(.+)$/i);
       let city = "";
       if (weatherMatch) {
@@ -57,7 +57,7 @@ function App() {
       setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
 
       // Update map safely
-      if (data.centers && Array.isArray(data.centers) && data.centers.length > 0) {
+      if (data.centers && Array.isArray(data.centers) && data.centers.length > 0 && data.centers[0].lat && data.centers[0].lon) {
         setCenters(data.centers);
       } else {
         setCenters([]);
@@ -97,7 +97,7 @@ function App() {
         </div>
       </div>
 
-      {centers.length > 0 && (
+      {Array.isArray(centers) && centers.length > 0 && centers[0].lat && centers[0].lon && (
         <div className="map-container">
           <MapContainer
             center={[centers[0].lat, centers[0].lon]}
@@ -105,11 +105,13 @@ function App() {
             style={{ height: "300px", width: "100%" }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {centers.map((c, idx) => (
-              <Marker key={idx} position={[c.lat, c.lon]}>
-                <Popup>{c.name}</Popup>
-              </Marker>
-            ))}
+            {centers.map((c, idx) =>
+              c.lat && c.lon ? (
+                <Marker key={idx} position={[c.lat, c.lon]}>
+                  <Popup>{c.name}</Popup>
+                </Marker>
+              ) : null
+            )}
           </MapContainer>
         </div>
       )}

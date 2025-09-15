@@ -37,17 +37,11 @@ def chat():
     if "weather" in user_message:
         for city in relief_centers.keys():
             if city in user_message:
-                url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-                try:
-                    res = requests.get(url).json()
-                    if res.get("cod") != 200:
-                        return jsonify({"message": f"Sorry, couldn't fetch weather for {city.title()}."})
-                    weather = res["weather"][0]["description"]
-                    temp = res["main"]["temp"]
-                    return jsonify({"message": f"🌤 Weather in {city.title()}: {weather}, {temp}°C"})
-                except Exception as e:
-                    return jsonify({"message": f"Error fetching weather: {str(e)}"})
-        return jsonify({"message": "Please mention a valid city for weather (e.g., Mumbai, Delhi, Mangalore)."})
+                return fetch_weather(city)
+        return jsonify({
+            "message": "Please mention a valid city for weather (Mumbai, Delhi, Mangalore).",
+            "centers": []
+        })
 
     # Relief centers
     elif "relief" in user_message or "shelter" in user_message:
@@ -57,27 +51,39 @@ def chat():
                     "message": f"Here are nearby relief centers in {city.title()}:",
                     "centers": centers
                 })
-        return jsonify({"message": "Sorry, I don’t have shelter data for that location yet."})
+        return jsonify({
+            "message": "Sorry, I don’t have shelter data for that location yet.",
+            "centers": []
+        })
 
     # Default echo
     else:
-        return jsonify({"message": f"You said: {user_message}"})
+        return jsonify({"message": f"You said: {user_message}", "centers": []})
 
 @app.route("/weather", methods=["GET"])
 def weather():
     city = request.args.get("city", "").lower()
     if city in relief_centers:
-        try:
-            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-            res = requests.get(url).json()
-            if res.get("cod") != 200:
-                return jsonify({"message": f"Sorry, couldn't fetch weather for {city.title()}."})
-            weather = res["weather"][0]["description"]
-            temp = res["main"]["temp"]
-            return jsonify({"message": f"🌤 Weather in {city.title()}: {weather}, {temp}°C"})
-        except Exception as e:
-            return jsonify({"message": f"Error fetching weather: {str(e)}"})
-    return jsonify({"message": "Please provide a valid city (Mumbai, Delhi, Mangalore)."})
+        return fetch_weather(city)
+    return jsonify({
+        "message": "Please provide a valid city (Mumbai, Delhi, Mangalore).",
+        "centers": []
+    })
+
+def fetch_weather(city):
+    try:
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+        res = requests.get(url).json()
+        if res.get("cod") != 200:
+            return jsonify({
+                "message": f"Sorry, couldn't fetch weather for {city.title()}.",
+                "centers": []
+            })
+        weather = res["weather"][0]["description"]
+        temp = res["main"]["temp"]
+        return jsonify({"message": f"🌤 Weather in {city.title()}: {weather}, {temp}°C", "centers": []})
+    except Exception as e:
+        return jsonify({"message": f"Error fetching weather: {str(e)}", "centers": []})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
