@@ -1,14 +1,13 @@
 {
-  "name": "frontend",
+  "name": "ai_disaster_assistant",
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "bootstrap": "^5.3.8",
-    "leaflet": "^1.9.4",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-leaflet": "^4.2.1",
-    "react-scripts": "5.0.1"
+    "axios": "^1.5.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^5.1.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -16,7 +15,13 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  "proxy": "https://your-backend-url.onrender.com",
+  "proxy": "https://ai-disaster-assistant-2.onrender.com",
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",
