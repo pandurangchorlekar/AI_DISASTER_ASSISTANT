@@ -32,7 +32,7 @@ def home():
 def chat():
     user_message = request.json.get("message", "").lower()
 
-    # 1️⃣ Weather (any city in India / world supported)
+    # 🌦 Weather for ANY city
     if "weather" in user_message:
         try:
             city = None
@@ -57,19 +57,19 @@ def chat():
         except Exception as e:
             return jsonify({"message": f"⚠️ Weather fetch failed. {str(e)}"})
 
-    # 2️⃣ Relief Centers
+    # 🏠 Relief Centers
     elif "relief" in user_message or "shelter" in user_message:
         for city, centers in relief_centers.items():
             if city in user_message:
                 return jsonify({
-                    "message": f"🏠 Relief centers in {city.title()}:\n" + "\n".join([c['name'] for c in centers]),
-                    "relief_centers": centers   # ✅ exact key frontend expects
+                    "message": f"🏠 Relief centers in {city.title()}: {', '.join([c['name'] for c in centers])}",
+                    "relief_centers": centers
                 })
         return jsonify({"message": "⚠️ No relief center data available for that city yet."})
 
-    # 3️⃣ Default Echo
-    else:
-        return jsonify({"message": f"🤖 You said: {user_message}"})
+    # 🤖 Default
+    return jsonify({"message": f"🤖 You said: {user_message}"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
