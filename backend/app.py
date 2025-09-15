@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 
-app = Flask(__name__)
+app = Flask(gunicorn app:app)
 CORS(app)
 
 # --- API Key for Weather ---
