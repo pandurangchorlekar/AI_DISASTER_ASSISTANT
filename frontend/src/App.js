@@ -20,8 +20,9 @@ function App() {
   const [input, setInput] = useState("");
   const [centers, setCenters] = useState([]);
 
-  const backendURL = "https://ai-disaster-assistant-2.onrender.com/chat"; // ✅ Your backend
+  const backendURL = "https://ai-disaster-assistant-2.onrender.com"; // Base backend URL
 
+  // Function to send message
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -29,15 +30,29 @@ function App() {
     setMessages([...messages, newMessage]);
 
     try {
-      const res = await fetch(backendURL, {
-        method: "POST",
+      let endpoint = "/chat"; // default endpoint
+
+      // If user types "weather <city>", use weather endpoint
+      let messageText = input.trim();
+      let weatherMatch = messageText.match(/^weather (.+)$/i);
+      if (weatherMatch) {
+        const city = weatherMatch[1];
+        endpoint = `/weather?city=${encodeURIComponent(city)}`;
+      }
+
+      const res = await fetch(`${backendURL}${endpoint}`, {
+        method: weatherMatch ? "GET" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: weatherMatch ? null : JSON.stringify({ message: input }),
       });
+
+      if (!res.ok) throw new Error("Network response was not ok");
+
       const data = await res.json();
 
       // Add bot message
-      setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
+      let botMessage = weatherMatch ? data.message : data.message;
+      setMessages((prev) => [...prev, { sender: "bot", text: botMessage }]);
 
       // If relief centers included, show map pins
       if (data.centers) {
@@ -46,6 +61,7 @@ function App() {
         setCenters([]);
       }
     } catch (error) {
+      console.error("Error:", error);
       setMessages((prev) => [
         ...prev,
         { sender: "bot", text: "⚠️ Server error, please try again later." },
