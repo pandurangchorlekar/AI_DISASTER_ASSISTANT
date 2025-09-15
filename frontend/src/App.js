@@ -22,7 +22,6 @@ function App() {
 
   const backendURL = "https://ai-disaster-assistant-2.onrender.com"; // Base backend URL
 
-  // Function to send message
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -30,20 +29,25 @@ function App() {
     setMessages([...messages, newMessage]);
 
     try {
-      let endpoint = "/chat"; // default endpoint
+      // Determine endpoint
+      let endpoint = "/chat";
+      let method = "POST";
+      let body = JSON.stringify({ message: input });
 
-      // If user types "weather <city>", use weather endpoint
-      let messageText = input.trim();
-      let weatherMatch = messageText.match(/^weather (.+)$/i);
+      // If input starts with "weather", use weather endpoint
+      const weatherMatch = input.trim().match(/^weather (.+)$/i);
       if (weatherMatch) {
         const city = weatherMatch[1];
         endpoint = `/weather?city=${encodeURIComponent(city)}`;
+        method = "GET";
+        body = null;
       }
 
+      // Fetch data from backend
       const res = await fetch(`${backendURL}${endpoint}`, {
-        method: weatherMatch ? "GET" : "POST",
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: weatherMatch ? null : JSON.stringify({ message: input }),
+        body: body,
       });
 
       if (!res.ok) throw new Error("Network response was not ok");
@@ -51,10 +55,9 @@ function App() {
       const data = await res.json();
 
       // Add bot message
-      let botMessage = weatherMatch ? data.message : data.message;
-      setMessages((prev) => [...prev, { sender: "bot", text: botMessage }]);
+      setMessages((prev) => [...prev, { sender: "bot", text: data.message }]);
 
-      // If relief centers included, show map pins
+      // Update map if centers included
       if (data.centers) {
         setCenters(data.centers);
       } else {
@@ -66,6 +69,7 @@ function App() {
         ...prev,
         { sender: "bot", text: "⚠️ Server error, please try again later." },
       ]);
+      setCenters([]);
     }
 
     setInput("");
@@ -101,9 +105,7 @@ function App() {
             zoom={12}
             style={{ height: "300px", width: "100%" }}
           >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {centers.map((c, idx) => (
               <Marker key={idx} position={[c.lat, c.lon]}>
                 <Popup>{c.name}</Popup>
